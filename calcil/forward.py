@@ -22,7 +22,10 @@ class Model(nn.Module):
     def __init__(*args, **kwargs):
         super().__init__(*args, **kwargs)
 
-    def forward(self, variables, *input_args, method_name=None):
+    def forward(self, *input_args, variables=None, method_name=None):
+        if variables is None:
+            variables = {}
+
         if method_name is None:
             ret = self.apply(variables, *input_args)
         else:
@@ -33,8 +36,18 @@ class Model(nn.Module):
         self.bind(variables, rngs)
         raise NotImplementedError
 
-    @staticmethod
-    def var_replace():
+    def var_find(self, variables, str):
+        """Find a variable by keyword matching and return its unique identifier."""
+        raise NotImplementedError
+
+    def var_replace(self, variables, vid, value):
+        raise NotImplementedError
+
+    def var_verify(self, variables):
+
+        raise NotImplementedError
+
+    def var_print(self):
         raise NotImplementedError
 
     def model_hyperparams(self):
@@ -43,4 +56,7 @@ class Model(nn.Module):
 
     @classmethod
     def recover_from_hyperparams(cls, s):
+        raise NotImplementedError
+
+    def model_save(self):
         raise NotImplementedError
