@@ -24,30 +24,76 @@ import optax
 @dataclasses.dataclass
 class ReconIterParameters:
     save_dir: str
-    n_iter: int
+    n_epoch: int
     keep_checkpoints: int = 1
     checkpoint_every: int = 10000
-    save_imgs_every: int = 1000
+    output_every: int = 1000
     log_every: int = 100
     log_max_outputs: int = 5
 
 
 @dataclasses.dataclass
 class ReconVarParameters:
-    lr_init: float = 0
-    lr_decay_iter: int = 1e6
-    lr_decay_rate: float = 1
-    lr_decay_begin: int = 0
+    lr: float = 0
+    opt: Union[str, optax.GradientTransformation] = 'adam'
+    opt_kwargs: dataclasses.field(default_factory=dict) = None
+    schedule: Union[str, optax.Schedule] = 'constant_schedule'
+    schedule_kwargs: dataclasses.field(default_factory=dict) = None
     delay_update_n_iter: int = 0
-    optax_method: str = 'adam'
     update_every: int = 1
-    grad_accumulate_iter: int = 1
 
 
-def update_iter_sgd(state, input_dict, loss):
-    (_, info), grad = jax.value_and_grad(loss, has_aux=True)(state.params, input_dict, state.apply_fn)
+def update_iter_sgd(state, input_dict, rngs, loss):
+    (_, info), grad = jax.value_and_grad(loss, has_aux=True)(state.params, input_dict,
+                                                             jax.tree_util.Partial(state.apply_fn, rngs=rngs))
     new_state = state.apply_gradients(grads=grad)
     return new_state, info
+
+
+def _set_up_tx(var_params: ReconVarParameters):
+    if var_params.lr <= 0:
+        return optax.set_to_zero()
+
+    if var_params.schedule_kwargs is None:
+        schedule_kwargs = {}
+    else:
+        schedule_kwargs = var_params.schedule_kwargs
+
+    if var_params.opt_kwargs is None:
+        opt_kwargs = {}
+    else:
+        opt_kwargs = var_params.opt_kwargs
+
+    if isinstance(var_params.schedule, str):
+        if var_params.schedule == 'constant' or var_params.schedule == 'constant_schedule':
+            lr_schedule = optax.constant_schedule(var_params.lr)
+        elif var_params.schedule == 'exponential' or var_params.schedule == 'exponential_decay':
+            lr_schedule = optax.exponential_decay(var_params.lr, **schedule_kwargs)
+        elif var_params.schedule == 'linear' or var_params.schedule == 'linear_schedule':
+            lr_schedule = optax.linear_schedule(var_params.lr, **schedule_kwargs)
+        else:
+            lr_schedule = getattr(optax, var_params.schedule)(var_params.lr, **var_params.schedule_kwargs)
+    elif isinstance(var_params.schedule, optax.Schedule):
+        lr_schedule = var_params.schedule
+    else:
+        raise ValueError('Unsupported input type for the learning rate schedule.')
+
+    if var_params.delay_update_n_iter > 0:
+        warnings.warn('Delayed update for {} iterations (the optimization will do nothing).'.format(var_params.delay_update_n_iter))
+        lr_schedule = optax.join_schedules([optax.constant_schedule(0.0), lr_schedule],
+                                           [var_params.delay_update_n_iter])
+
+    if isinstance(var_params.opt, str):
+        optimizer = getattr(optax, var_params.opt)(lr_schedule, **opt_kwargs)
+    elif isinstance(var_params.opt, optax.GradientTransformation):
+        optimizer = var_params.opt
+    else:
+        raise ValueError('Unsupported input type for the optimizer.')
+
+    if var_params.update_every > 1:
+        optimizer = optax.chain(optax.apply_every(var_params.update_every), optimizer)
+
+    return optimizer
 
 
 def reconstruct_sgd(forward_fn: Callable,
@@ -57,27 +103,12 @@ def reconstruct_sgd(forward_fn: Callable,
                     var_params: ReconVarParameters,
                     recon_param: ReconIterParameters,
                     output_fn: Union[Callable, None] = None,
-                    post_update_handler: Callable = None):
-
-    # define optimizer
-    lr_schedule = optax.exponential_decay(init_value=var_params.lr_init,
-                                          transition_steps=var_params.lr_decay_iter,
-                                          transition_begin=var_params.lr_decay_begin,
-                                          decay_rate=var_params.lr_decay_rate)
-    if var_params.delay_update_n_iter > 0:
-        warnings.warn('Delayed update for {} iterations (the optimization will do nothing).'.format(var_params.delay_update_n_iter))
-        lr_schedule = optax.join_schedules([optax.constant_schedule(0.0), lr_schedule],
-                                           [var_params.delay_update_n_iter])
-
-    optimizer = getattr(optax, var_params.optax_method)(lr_schedule)
-
-    if var_params.update_every > 1:
-        optimizer = optax.chain(optax.apply_every(var_params.update_every), optimizer)
-    if var_params.grad_accumulate_iter >= 2:
-        optimizer = optax.MultiSteps(optimizer, var_params.grad_accumulate_iter)
+                    post_update_handler: Callable = None,
+                    rngs: Union[Dict, None] = None):
+    optimizer = _set_up_tx(var_params)
     state = train_state.TrainState.create(apply_fn=forward_fn, params=variables, tx=optimizer)
 
-    return run_reconstruction(state, data_loader, loss_fn, recon_param, output_fn, post_update_handler)
+    return run_reconstruction(state, data_loader, loss_fn, recon_param, output_fn, post_update_handler, rngs)
 
 
 def generate_nested_dict_keys(d):
@@ -98,30 +129,13 @@ def reconstruct_multivars_sgd(forward_fn: Callable,
                               loss_fn: Callable,
                               recon_param: ReconIterParameters,
                               output_fn: Union[Callable, None] = None,
-                              post_update_handler: Callable = None):
+                              post_update_handler: Callable = None,
+                              rngs: Union[Dict, None] = None):
 
     param_labels = generate_nested_dict_keys(var_params_pytree)
 
     list_var_params, params_treedef = jax.tree_util.tree_flatten(var_params_pytree)
     param_labels_pytree = jax.tree_util.tree_unflatten(params_treedef, param_labels)
-
-    def _set_up_tx(var_params: ReconVarParameters):
-        if var_params.lr_init <= 0:
-            return optax.set_to_zero()
-
-        lr_schedule = optax.exponential_decay(init_value=var_params.lr_init, transition_steps=var_params.lr_decay_iter,
-                                              decay_rate=var_params.lr_decay_rate,
-                                              transition_begin=var_params.lr_decay_begin)
-        if var_params.delay_update_n_iter > 0:
-            lr_schedule = optax.join_schedules([optax.constant_schedule(0.0), lr_schedule],
-                                               [var_params.delay_update_n_iter])
-
-        optimizer = getattr(optax, var_params.optax_method)(lr_schedule)
-        if var_params.update_every > 1:
-            optimizer = optax.chain(optax.apply_every(var_params.update_every), optimizer)
-        if var_params.grad_accumulate_iter > 1:
-            optimizer = optax.MultiSteps(optimizer, var_params.grad_accumulate_iter)
-        return optimizer
 
     dict_opt = dict(zip(param_labels, [_set_up_tx(v_p) for v_p in list_var_params]))
     opt_multi = optax.multi_transform(dict_opt, param_labels_pytree)
@@ -130,15 +144,16 @@ def reconstruct_multivars_sgd(forward_fn: Callable,
         params=variables.unfreeze() if isinstance(variables,flax.core.FrozenDict) else variables,
         tx=opt_multi)
 
-    return run_reconstruction(state, data_loader, loss_fn, recon_param, output_fn, post_update_handler)
+    return run_reconstruction(state, data_loader, loss_fn, recon_param, output_fn, post_update_handler, rngs)
 
 
 def run_reconstruction(state: train_state.TrainState,
                        data_loader: abc.Generator,
                        loss_fn: Callable,
                        recon_param: ReconIterParameters,
-                       output_fn: Union[Callable, None] = None,
-                       post_update_handler: Callable = None):
+                       output_fn: Union[Callable, None],
+                       post_update_handler: Callable,
+                       rngs: Union[Dict, None]):
     # init logging
     summary_writer = tensorboard.SummaryWriter(os.path.join(recon_param.save_dir,
                                                             datetime.datetime.now().strftime("%Y%m%d-%H%M%S")))
@@ -153,12 +168,16 @@ def run_reconstruction(state: train_state.TrainState,
     reset_timer = True
 
     # update model
-    for s, input_dict in zip(range(recon_param.n_iter), data_loader):
+    for s, input_batches in zip(range(recon_param.n_epoch), data_loader):
         if reset_timer:
             loop_start_time = time.time()
             reset_timer = False
 
-        state, info = update_fn(state, input_dict)
+        for input_dict in input_batches:
+            cur_rngs = jax.tree_map(lambda rng: jax.random.split(rng)[0], rngs)
+            rngs = jax.tree_map(lambda rng: jax.random.split(rng)[1], rngs)
+
+            state, info = update_fn(state, input_dict, cur_rngs)
 
         if post_update_fn:
             state = post_update_fn(state)
@@ -185,16 +204,16 @@ def run_reconstruction(state: train_state.TrainState,
             summary_writer.scalar('iter per sec', iter_per_sec, s)
 
         # save and log recon images
-        if ((s > 0 and s % recon_param.save_imgs_every == 0) or
-            (s == recon_param.n_iter - 1)) and (output_fn is not None):
-            output_dict = output_fn(state)
+        if ((s > 0 and s % recon_param.output_every == 0) or
+            (s == recon_param.n_epoch - 1)) and (output_fn is not None):
+            output_dict = output_fn(state.params, state)
             for key in output_dict:
                 out_item = np.array(output_dict[key])
                 list_recon[key].append(out_item)
                 summary_writer.image(key, out_item, s, max_outputs=recon_param.log_max_outputs)
 
         # save checkpoints
-        if (state.step % recon_param.checkpoint_every == 0) or (state.step == recon_param.n_iter):
+        if (state.step % recon_param.checkpoint_every == 0) or (state.step == recon_param.n_epoch):
             checkpoints.save_checkpoint(recon_param.save_dir, state, state.step,
                                         keep=recon_param.keep_checkpoints, overwrite=True)
 
