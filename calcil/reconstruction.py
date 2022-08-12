@@ -20,6 +20,8 @@ from flax.metrics import tensorboard
 from flax.training import train_state, checkpoints
 import optax
 
+from calcil.loss import Loss
+
 
 @dataclasses.dataclass
 class ReconIterParameters:
@@ -43,8 +45,8 @@ class ReconVarParameters:
     update_every: int = 1
 
 
-def update_iter_sgd(state, input_dict, rngs, loss):
-    (_, info), grad = jax.value_and_grad(loss, has_aux=True)(state.params, input_dict,
+def update_iter_sgd(state, input_dict, rngs, loss_fn):
+    (_, info), grad = jax.value_and_grad(loss_fn, has_aux=True)(state.params, input_dict,
                                                              jax.tree_util.Partial(state.apply_fn, rngs=rngs))
     new_state = state.apply_gradients(grads=grad)
     return new_state, info
@@ -99,7 +101,7 @@ def _set_up_tx(var_params: ReconVarParameters):
 def reconstruct_sgd(forward_fn: Callable,
                     variables: Union[Dict, flax.core.FrozenDict],
                     data_loader: abc.Generator,
-                    loss_fn: Callable,
+                    loss: Loss,
                     var_params: ReconVarParameters,
                     recon_param: ReconIterParameters,
                     output_fn: Union[Callable, None] = None,
@@ -108,7 +110,7 @@ def reconstruct_sgd(forward_fn: Callable,
     optimizer = _set_up_tx(var_params)
     state = train_state.TrainState.create(apply_fn=forward_fn, params=variables, tx=optimizer)
 
-    return run_reconstruction(state, data_loader, loss_fn, recon_param, output_fn, post_update_handler, rngs)
+    return run_reconstruction(state, data_loader, loss, recon_param, output_fn, post_update_handler, rngs)
 
 
 def generate_nested_dict_keys(d):
@@ -126,7 +128,7 @@ def reconstruct_multivars_sgd(forward_fn: Callable,
                               variables: Union[Dict, flax.core.FrozenDict],
                               var_params_pytree: Dict,
                               data_loader: abc.Generator,
-                              loss_fn: Callable,
+                              loss: Loss,
                               recon_param: ReconIterParameters,
                               output_fn: Union[Callable, None] = None,
                               post_update_handler: Callable = None,
@@ -144,12 +146,12 @@ def reconstruct_multivars_sgd(forward_fn: Callable,
         params=variables.unfreeze() if isinstance(variables,flax.core.FrozenDict) else variables,
         tx=opt_multi)
 
-    return run_reconstruction(state, data_loader, loss_fn, recon_param, output_fn, post_update_handler, rngs)
+    return run_reconstruction(state, data_loader, loss, recon_param, output_fn, post_update_handler, rngs)
 
 
 def run_reconstruction(state: train_state.TrainState,
                        data_loader: abc.Generator,
-                       loss_fn: Callable,
+                       loss: Loss,
                        recon_param: ReconIterParameters,
                        output_fn: Union[Callable, None],
                        post_update_handler: Callable,
@@ -160,7 +162,7 @@ def run_reconstruction(state: train_state.TrainState,
     list_recon = defaultdict(list)
 
     # compile update function
-    update_fn = jax.jit(functools.partial(update_iter_sgd, loss=loss_fn))
+    update_fn = jax.jit(functools.partial(update_iter_sgd, loss_fn=loss.get_loss_fn()))
     post_update_fn = jax.jit(post_update_handler) if post_update_handler else None
 
     # set up timer
@@ -173,18 +175,21 @@ def run_reconstruction(state: train_state.TrainState,
             loop_start_time = time.time()
             reset_timer = False
 
-        for input_dict in input_batches:
+        for i_batch, input_dict in enumerate(input_batches):
             cur_rngs = jax.tree_map(lambda rng: jax.random.split(rng)[0], rngs)
             rngs = jax.tree_map(lambda rng: jax.random.split(rng)[1], rngs)
 
-            state, info = update_fn(state, input_dict, cur_rngs)
+            if i_batch == 0:
+                state, info = update_fn(state, input_dict, cur_rngs)
+            else:
+                state, _ = update_fn(state, input_dict, cur_rngs)
 
         if post_update_fn:
             state = post_update_fn(state)
 
         # print and log loss values
         if s % recon_param.log_every == 0:
-            print(f'iter: {s}', end='')
+            print(f'epoch: {s}', end='')
 
             # to support both dataclass and dictionary as aux output obj
             if dataclasses.is_dataclass(info):
@@ -199,9 +204,9 @@ def run_reconstruction(state: train_state.TrainState,
                     summary_writer.scalar(field, value, s)
 
             reset_timer = True
-            iter_per_sec = recon_param.log_every / (time.time() - loop_start_time)
-            print(', iter per sec: {:#.5g}'.format(iter_per_sec))
-            summary_writer.scalar('iter per sec', iter_per_sec, s)
+            epoch_per_sec = recon_param.log_every / (time.time() - loop_start_time)
+            print(', epoch per sec: {:#.5g}'.format(epoch_per_sec))
+            summary_writer.scalar('epoch per sec', epoch_per_sec, s)
 
         # save and log recon images
         if ((s > 0 and s % recon_param.output_every == 0) or

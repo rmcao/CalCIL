@@ -4,12 +4,8 @@
 # Contact: rcao@berkeley.edu
 # Website: https://rmcao.github.io
 
-from abc import ABC, abstractmethod
 import jax.numpy as jnp
 import jax
-from flax import linen as nn
-
-import types
 import functools
 
 
@@ -20,7 +16,7 @@ def loss_fn_checker(fn):
 
 class Loss:
 
-    def __init__(self, loss_fn, name, weight=None):
+    def __init__(self, loss_fn, name, weight=None, has_intermediates=False):
         if isinstance(loss_fn, list):
             self.loss_fn = loss_fn
         else:
@@ -38,9 +34,11 @@ class Loss:
         else:
             self.names = [name]
 
-    def get_loss_fn(self, enable_intermediate=False):
+        self.enable_intermediates = has_intermediates
+
+    def get_loss_fn(self):
         def loss_fn(variables, input_dict, forward_fn):
-            if enable_intermediate:
+            if self.enable_intermediates:
                 forward_output, states = forward_fn(variables, input_dict, mutable = ['intermediates'])
                 intermediates = states['intermediates']
             else:
@@ -60,13 +58,14 @@ class Loss:
     def __add__(self, other):
         if not isinstance(other, Loss):
             raise NotImplementedError('Operands in loss addition have to be objects from Loss class.')
-        return Loss(self.loss_fn + other.loss_fn, self.names + other.names, self.weights + other.weights)
+        return Loss(self.loss_fn + other.loss_fn, self.names + other.names, self.weights + other.weights,
+                    self.enable_intermediates|other.enable_intermediates)
 
     def __mul__(self, scalar):
         if not isinstance(scalar, (int, float)):
             raise NotImplementedError('Need scalar value for the multiplication')
 
-        return Loss(self.loss_fn, self.names, [w * scalar for w in self.weights])
+        return Loss(self.loss_fn, self.names, [w * scalar for w in self.weights], self.enable_intermediates)
 
     __rmul__ = __mul__
 

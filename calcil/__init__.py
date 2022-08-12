@@ -6,7 +6,7 @@
 
 from . import data_utils
 from . import forward
-from . import losses
+from . import loss
 from . import reconstruction
 from . import signal
 from . import phantom
