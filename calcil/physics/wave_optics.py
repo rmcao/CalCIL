@@ -35,7 +35,7 @@ def genGrid(size, dx, flag_shift = False):
 
 
 def genGridNumpy(size, dx, flag_shift = False):
-    """This function generates 1D Fourier grid, and is centered at the middle of the array"""
+    """This function generates 1D Fourier grid."""
     xlin = (np.arange(size,dtype='complex128') - size//2) * dx
     if flag_shift:
         xlin = np.roll(xlin, (size)//2)

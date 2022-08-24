@@ -21,11 +21,6 @@ def _get_version():
     raise ValueError('`__version__` not defined in `calcil/__init__.py`')
 
 install_requires = [
-    "numpy>=1.12",
-    "jax>=0.2.20",
-    "flax==0.3.4",
-    "chex==0.0.8",
-    "optax==0.1.0",
 ]
 
 setup(
