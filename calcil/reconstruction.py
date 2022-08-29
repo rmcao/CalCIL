@@ -31,7 +31,7 @@ class ReconIterParameters:
     checkpoint_every: int = 10000
     output_every: int = 1000
     log_every: int = 100
-    log_max_outputs: int = 5
+    log_max_imgs: int = 5
 
 
 @dataclasses.dataclass
@@ -106,11 +106,15 @@ def reconstruct_sgd(forward_fn: Callable,
                     recon_param: ReconIterParameters,
                     output_fn: Union[Callable, None] = None,
                     post_update_handler: Callable = None,
-                    rngs: Union[Dict, None] = None):
+                    rngs: Union[Dict, None] = None,
+                    output_info: bool = False):
     optimizer = _set_up_tx(var_params)
     state = train_state.TrainState.create(apply_fn=forward_fn, params=variables, tx=optimizer)
 
-    return run_reconstruction(state, data_loader, loss, recon_param, output_fn, post_update_handler, rngs)
+    if output_info:
+        return run_reconstruction(state, data_loader, loss, recon_param, output_fn, post_update_handler, rngs)
+    else:
+        return run_reconstruction(state, data_loader, loss, recon_param, output_fn, post_update_handler, rngs)[:2]
 
 
 def generate_nested_dict_keys(d):
@@ -132,7 +136,8 @@ def reconstruct_multivars_sgd(forward_fn: Callable,
                               recon_param: ReconIterParameters,
                               output_fn: Union[Callable, None] = None,
                               post_update_handler: Callable = None,
-                              rngs: Union[Dict, None] = None):
+                              rngs: Union[Dict, None] = None,
+                              output_info: bool = False):
 
     param_labels = generate_nested_dict_keys(var_params_pytree)
 
@@ -146,7 +151,10 @@ def reconstruct_multivars_sgd(forward_fn: Callable,
         params=variables.unfreeze() if isinstance(variables,flax.core.FrozenDict) else variables,
         tx=opt_multi)
 
-    return run_reconstruction(state, data_loader, loss, recon_param, output_fn, post_update_handler, rngs)
+    if output_info:
+        return run_reconstruction(state, data_loader, loss, recon_param, output_fn, post_update_handler, rngs)
+    else:
+        return run_reconstruction(state, data_loader, loss, recon_param, output_fn, post_update_handler, rngs)[:2]
 
 
 def run_reconstruction(state: train_state.TrainState,
@@ -159,7 +167,7 @@ def run_reconstruction(state: train_state.TrainState,
     # init logging
     summary_writer = tensorboard.SummaryWriter(os.path.join(recon_param.save_dir,
                                                             datetime.datetime.now().strftime("%Y%m%d-%H%M%S")))
-    list_recon = defaultdict(list)
+    list_recon, list_info = defaultdict(list), defaultdict(list)
 
     # compile update function
     update_fn = jax.jit(functools.partial(update_iter_sgd, loss_fn=loss.get_loss_fn()))
@@ -171,58 +179,59 @@ def run_reconstruction(state: train_state.TrainState,
 
     # update model
     for s, input_batches in zip(range(recon_param.n_epoch), data_loader):
+        list_info['epoch'] = s + 1
         if reset_timer:
             loop_start_time = time.time()
             reset_timer = False
 
+        batch_info = []
         for i_batch, input_dict in enumerate(input_batches):
             cur_rngs = jax.tree_map(lambda rng: jax.random.split(rng)[0], rngs)
             rngs = jax.tree_map(lambda rng: jax.random.split(rng)[1], rngs)
 
-            if i_batch == 0:
-                state, info = update_fn(state, input_dict, cur_rngs)
-            else:
-                state, _ = update_fn(state, input_dict, cur_rngs)
+            state, info = update_fn(state, input_dict, cur_rngs)
+
+            # accumulate info var
+            batch_info.append(info)
 
         if post_update_fn:
             state = post_update_fn(state)
 
         # print and log loss values
-        if s % recon_param.log_every == 0:
-            print(f'epoch: {s}', end='')
+        if (s + 1) % recon_param.log_every == 0:
+            print(f'epoch: {s + 1}', end='')
 
-            # to support both dataclass and dictionary as aux output obj
-            if dataclasses.is_dataclass(info):
-                for field in info.__dataclass_fields__:
-                    value = getattr(info, field)
-                    print(', {}: {:#.5g}'.format(field, value), end='')
-                    summary_writer.scalar(field, value, s)
-            else:
-                for field in info:
-                    value = info[field]
-                    print(', {}: {:#.5g}'.format(field, value), end='')
-                    summary_writer.scalar(field, value, s)
+            if isinstance(batch_info[0], dict):
+                info_avg = {}
+                for field in batch_info[0].keys():
+                    info_avg[field] = sum(info[field] for info in batch_info) / len(batch_info)
+                    print(', {}: {:#.5g}'.format(field, info_avg[field]), end='')
+                    summary_writer.scalar(field, info_avg[field], s + 1)
+
+                for field in info_avg:
+                    list_info[field].append(info_avg[field])
 
             reset_timer = True
-            epoch_per_sec = recon_param.log_every / (time.time() - loop_start_time)
+            epoch_per_sec = min(s + 1, recon_param.log_every) / (time.time() - loop_start_time)
             print(', epoch per sec: {:#.5g}'.format(epoch_per_sec))
-            summary_writer.scalar('epoch per sec', epoch_per_sec, s)
+            summary_writer.scalar('epoch per sec', epoch_per_sec, s + 1)
+            list_info['elapsed time'].append(time.time() - loop_start_time)
 
         # save and log recon images
-        if ((s > 0 and s % recon_param.output_every == 0) or
-            (s == recon_param.n_epoch - 1)) and (output_fn is not None):
+        if (((s + 1) % recon_param.output_every == 0) or
+            ((s + 1) == recon_param.n_epoch)) and (output_fn is not None):
             output_dict = output_fn(state.params, state)
             for key in output_dict:
                 out_item = np.array(output_dict[key])
                 list_recon[key].append(out_item)
-                summary_writer.image(key, out_item, s, max_outputs=recon_param.log_max_outputs)
+                summary_writer.image(key, out_item, s + 1, max_outputs=recon_param.log_max_imgs)
 
         # save checkpoints
         if (state.step % recon_param.checkpoint_every == 0) or (state.step == recon_param.n_epoch):
             checkpoints.save_checkpoint(recon_param.save_dir, state, state.step,
                                         keep=recon_param.keep_checkpoints, overwrite=True)
 
-    return state.params, list_recon
+    return state.params, list_recon, list_info
 
 
 def load_checkpoint_and_output(load_path, output_fn=None):
