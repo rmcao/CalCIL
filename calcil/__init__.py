@@ -9,7 +9,6 @@ from . import forward
 from . import loss
 from . import reconstruction
 from . import signal
-from . import phantom
 from . import dataclasses
 
 from . import physics
