@@ -86,7 +86,7 @@ def _set_up_tx(var_params: ReconVarParameters):
                                            [var_params.delay_update_n_iter])
 
     if isinstance(var_params.opt, str):
-        optimizer = getattr(optax, var_params.opt)(lr_schedule, **opt_kwargs)
+        optimizer = getattr(optax, var_params.opt)(learning_rate=lr_schedule, **opt_kwargs)
     elif isinstance(var_params.opt, optax.GradientTransformation):
         optimizer = var_params.opt
     else:
@@ -179,7 +179,7 @@ def run_reconstruction(state: train_state.TrainState,
 
     # update model
     for s, input_batches in zip(range(recon_param.n_epoch), data_loader):
-        list_info['epoch'] = s + 1
+        list_info['epoch'].append(s + 1)
         if reset_timer:
             loop_start_time = time.time()
             reset_timer = False
@@ -204,7 +204,7 @@ def run_reconstruction(state: train_state.TrainState,
             if isinstance(batch_info[0], dict):
                 info_avg = {}
                 for field in batch_info[0].keys():
-                    info_avg[field] = sum(info[field] for info in batch_info) / len(batch_info)
+                    info_avg[field] = sum(float(info[field]) for info in batch_info) / len(batch_info)
                     print(', {}: {:#.5g}'.format(field, info_avg[field]), end='')
                     summary_writer.scalar(field, info_avg[field], s + 1)
 

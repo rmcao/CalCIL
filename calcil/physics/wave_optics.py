@@ -30,7 +30,7 @@ def genGrid(size, dx, flag_shift = False):
     """
     xlin = (jnp.arange(size,dtype=jnp_complex_datatype) - size//2) * dx
     if flag_shift:
-        xlin = jnp.roll(xlin, (size)//2)
+        xlin = jnp.roll(xlin, (size + 1)//2)
     return xlin
 
 
