@@ -223,6 +223,7 @@ def run_reconstruction(state: train_state.TrainState,
             output_dict = output_fn(state.params, state)
             for key in output_dict:
                 out_item = np.array(output_dict[key])
+                out_item = (out_item - np.min(out_item)) / np.ptp(out_item)
                 list_recon[key].append(out_item)
                 summary_writer.image(key, out_item, s + 1, max_outputs=recon_param.log_max_imgs)
 

@@ -9,15 +9,21 @@ import numpy as np
 import jax.tree_util
 
 
-def loader_from_numpy(input_dict, prefix_dim=None, random=True, seed=951, aux_terms=None):
+def loader_from_numpy(input_dict, prefix_dim=None, random=True, seed=951, aux_terms=None, nojax=True):
     # sample on the first dimension of each element in input_dict (assuming everything are ndarray)
     rng = np.random.default_rng(seed)
-    n_imgs = jax.tree_util.tree_leaves(input_dict)[0].shape[0]
+
+    if nojax:
+        n_imgs = next(iter(input_dict.values())).shape[0]
+    else:
+        n_imgs = jax.tree_util.tree_leaves(input_dict)[0].shape[0]
 
     if prefix_dim:
         n_batches = int(np.floor(n_imgs / np.prod(prefix_dim)))
     else:
         n_batches = n_imgs
+
+    print(f"n_imgs: {n_imgs}, n_batches: {n_batches}.")
 
     count_epoch, count_step = 0, 0
 
@@ -34,10 +40,16 @@ def loader_from_numpy(input_dict, prefix_dim=None, random=True, seed=951, aux_te
             count_step += 1
             if prefix_dim is None:
                 i = indices[i_batch]
-                out_dict = jax.tree_util.tree_map(lambda x: x[i], input_dict)
+                if nojax:
+                    out_dict = {k: v[i] for k, v in input_dict.items()}
+                else:
+                    out_dict = jax.tree_util.tree_map(lambda x: x[i], input_dict)
             else:
                 i = indices[i_batch * np.prod(prefix_dim):(i_batch+1) * np.prod(prefix_dim)]
-                out_dict = jax.tree_util.tree_map(lambda x: x[i].reshape(prefix_dim + x.shape[1:]), input_dict)
+                if nojax:
+                    out_dict = {k: v[i].reshape(prefix_dim + v.shape[1:]) for k, v in input_dict.items()}
+                else:
+                    out_dict = jax.tree_util.tree_map(lambda x: x[i].reshape(prefix_dim + x.shape[1:]), input_dict)
 
             common_terms = {'epoch': count_epoch, 'step': count_step, 'batch': i_batch}
             if aux_terms:
