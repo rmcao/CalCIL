@@ -237,6 +237,8 @@ def run_reconstruction(state: train_state.TrainState,
 
 def load_checkpoint_and_output(load_path, output_fn=None):
     variables = checkpoints.restore_checkpoint(load_path, None)['params']
+    variables = jax.tree_util.tree_map(lambda x: jax.numpy.asarray(x), variables)
+
     if output_fn is None:
         return variables
     else:
