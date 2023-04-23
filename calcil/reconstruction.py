@@ -5,6 +5,7 @@
 # Website: https://rmcao.github.io
 
 import os
+import glob
 import datetime
 import dataclasses
 import functools
@@ -19,6 +20,8 @@ import jax
 from flax.metrics import tensorboard
 from flax.training import train_state, checkpoints
 import optax
+import tensorflow as tf
+from tensorboard.backend.event_processing import event_accumulator
 
 from calcil.loss import Loss
 
@@ -223,9 +226,9 @@ def run_reconstruction(state: train_state.TrainState,
             output_dict = output_fn(state.params, state)
             for key in output_dict:
                 out_item = np.array(output_dict[key])
-                out_item = (out_item - np.min(out_item)) / np.ptp(out_item)
-                list_recon[key].append(out_item)
-                summary_writer.image(key, out_item, s + 1, max_outputs=recon_param.log_max_imgs)
+                list_recon[key].append(out_item.copy())
+                summary_writer.image(key, (out_item - np.min(out_item)) / np.ptp(out_item), s + 1,
+                                     max_outputs=recon_param.log_max_imgs)
 
         # save checkpoints
         if (state.step % recon_param.checkpoint_every == 0) or (state.step == recon_param.n_epoch):
@@ -244,3 +247,28 @@ def load_checkpoint_and_output(load_path, output_fn=None):
     else:
         output_dict = output_fn(variables)
         return variables, output_dict
+
+
+def load_tensorboard_log(log_path, tag, is_image=False):
+    if os.path.isdir(log_path):
+        list_path = glob.glob(log_path + '/events.out.tfevents.*')
+        if len(list_path) == 1:
+            log_path = list_path[0]
+
+    ea = event_accumulator.EventAccumulator(log_path, size_guidance={event_accumulator.TENSORS: 0})
+    ea.Reload()
+
+    if tag not in ea.Tags()['tensors']:
+        print(ea.Tags()['tensors'])
+        raise ValueError(f'Tag {tag} not found in tensorboard file {log_path}.')
+
+    list_out, list_step = [], []
+    for event_tensor in ea.Tensors(tag):
+        if is_image:
+            list_out.append(tf.image.decode_image(event_tensor.tensor_proto.string_val[2]).numpy())
+        else:
+            list_out.append(tf.make_ndarray(event_tensor.tensor_proto))
+
+        list_step.append(event_tensor.step)
+
+    return list_out, list_step
