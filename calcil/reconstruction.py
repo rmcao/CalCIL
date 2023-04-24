@@ -231,8 +231,8 @@ def run_reconstruction(state: train_state.TrainState,
                                      max_outputs=recon_param.log_max_imgs)
 
         # save checkpoints
-        if (state.step % recon_param.checkpoint_every == 0) or (state.step == recon_param.n_epoch):
-            checkpoints.save_checkpoint(recon_param.save_dir, state, state.step,
+        if ((s+1) % recon_param.checkpoint_every == 0) or (s + 1 == recon_param.n_epoch):
+            checkpoints.save_checkpoint(recon_param.save_dir, state, s+1,
                                         keep=recon_param.keep_checkpoints, overwrite=True)
 
     return state.params, list_recon, list_info
