@@ -53,6 +53,17 @@ def genPupil(shape, pixel_size, NA, wavelength, NA_in = 0.0, fx_illu=0.0, fy_ill
     return jnp.asarray(pupil)
 
 
+def genPupilNumpy(shape, pixel_size, NA, wavelength, NA_in = 0.0, fx_illu=0.0, fy_illu=0.0):
+    assert len(shape) == 2, "pupil should be two dimensional!"
+    fxlin        = np.fft.ifftshift(genGridNumpy(shape[1], 1 / pixel_size / shape[1])).real
+    fylin        = np.fft.ifftshift(genGridNumpy(shape[0], 1 / pixel_size / shape[0])).real
+    pupil_radius = NA/wavelength
+    pupil        = np.asarray((fxlin[np.newaxis,:] - fx_illu)**2 + (fylin[:,np.newaxis] - fy_illu)**2 <= pupil_radius**2)
+    if NA_in != 0.0:
+        pupil[(fxlin[np.newaxis,:] - fx_illu)**2 + (fylin[:,np.newaxis] - fy_illu)**2 < pupil_radius**2] = 0.0
+    return pupil
+
+
 def propKernel(dim_yx, prop_distances, pixel_size, wavelength, RI):
     fxlin        = jnp.array(jnp.fft.ifftshift(genGrid(dim_yx[1], 1 / pixel_size / dim_yx[1])))
     fylin        = jnp.array(jnp.fft.ifftshift(genGrid(dim_yx[0], 1 / pixel_size / dim_yx[0])))
@@ -70,7 +81,7 @@ def propKernelNumpy(shape, pixel_size, wavelength, prop_distance, NA=None, RI=1.
     fylin = np.fft.ifftshift(genGrid(shape[0], 1 / pixel_size / shape[0]))
     if band_limited:
         assert NA is not None, "need to provide numerical aperture of the system!"
-        Pcrop = genPupil(shape, pixel_size, NA, wavelength)
+        Pcrop = genPupilNumpy(shape, pixel_size, NA, wavelength)
     else:
         Pcrop = 1.0
     prop_kernel = Pcrop * np.exp(1j * 2.0 * np.pi * np.abs(prop_distance) * Pcrop * (
