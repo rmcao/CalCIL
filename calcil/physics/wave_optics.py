@@ -49,7 +49,7 @@ def genPupil(shape, pixel_size, NA, wavelength, NA_in = 0.0, fx_illu=0.0, fy_ill
     pupil_radius = NA/wavelength
     pupil        = np.asarray((fxlin[np.newaxis,:] - fx_illu)**2 + (fylin[:,np.newaxis] - fy_illu)**2 <= pupil_radius**2)
     if NA_in != 0.0:
-        pupil[(fxlin[np.newaxis,:] - fx_illu)**2 + (fylin[:,np.newaxis] - fy_illu)**2 < pupil_radius**2] = 0.0
+        pupil[(fxlin[np.newaxis,:] - fx_illu)**2 + (fylin[:,np.newaxis] - fy_illu)**2 < (NA_in/wavelength)**2] = 0.0
     return jnp.asarray(pupil)
 
 
@@ -60,7 +60,7 @@ def genPupilNumpy(shape, pixel_size, NA, wavelength, NA_in = 0.0, fx_illu=0.0, f
     pupil_radius = NA/wavelength
     pupil        = np.asarray((fxlin[np.newaxis,:] - fx_illu)**2 + (fylin[:,np.newaxis] - fy_illu)**2 <= pupil_radius**2)
     if NA_in != 0.0:
-        pupil[(fxlin[np.newaxis,:] - fx_illu)**2 + (fylin[:,np.newaxis] - fy_illu)**2 < pupil_radius**2] = 0.0
+        pupil[(fxlin[np.newaxis,:] - fx_illu)**2 + (fylin[:,np.newaxis] - fy_illu)**2 < (NA_in/wavelength)**2] = 0.0
     return pupil
 
 
