@@ -10,7 +10,22 @@ import jax.tree_util
 
 
 def loader_from_numpy(input_dict, prefix_dim=None, random=True, seed=951, aux_terms=None, nojax=True):
-    # sample on the first dimension of each element in input_dict (assuming everything are ndarray)
+    """Load data from numpy arrays.
+
+    Args:
+        input_dict (dict): dictionary of numpy arrays. The first dimension is used as the batch dimension. All arrays
+            should have the same length in the first dimension.
+        prefix_dim (tuple): prefix dimension of the output arrays. It is used to control batch size in practice. If
+            None, the first dimension is used.
+        random (bool): whether to sample randomly. If False, the data is loaded in order.
+        seed (int): random seed
+        aux_terms (dict): auxiliary terms to be added to the output dictionary. The same terms are added to all
+            batches.
+        nojax (bool): whether to use jax or not
+    Returns:
+        generator: a generator that yields a dictionary of numpy arrays.
+    """
+
     rng = np.random.default_rng(seed)
 
     if nojax:
@@ -61,25 +76,5 @@ def loader_from_numpy(input_dict, prefix_dim=None, random=True, seed=951, aux_te
 
 
 def tfds_files_loader(tf_dataset):
-    #
-    raise NotImplementedError
 
-# def simple_img_loader_p(input_dict, prefix_dim, num_devices, consecutive_imgs=False, seed=951, aux_terms=None):
-#     # sample on the first dimension of each element in input_dict (assuming everything are ndarray)
-#     rng = np.random.default_rng(seed)
-#     n_imgs = jax.tree_util.tree_leaves(input_dict)[0].shape[0]
-#     count = 0
-#
-#     while True:
-#         count = count + 1
-#         if consecutive_imgs:
-#             i_begin = rng.integers(n_imgs)
-#             i = (np.arange(np.prod(prefix_dim) * num_devices) + i_begin) % n_imgs
-#         else:
-#             i = rng.integers(n_imgs, size=np.prod(prefix_dim) * num_devices)
-#         out_dict = jax.tree_util.tree_map(lambda x: x[i].reshape((num_devices, ) + prefix_dim + x.shape[1:]), input_dict)
-#
-#         if aux_terms:
-#             yield {'step': np.ones(num_devices) * count, **out_dict, **aux_terms}
-#         else:
-#             yield {'step': np.ones(num_devices) * count, **out_dict}
+    raise NotImplementedError

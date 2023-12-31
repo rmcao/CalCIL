@@ -49,6 +49,7 @@ class ReconVarParameters:
 
 
 def update_iter_sgd(state, input_dict, rngs, loss_fn):
+    """Update function for SGD reconstruction."""
     (_, info), grad = jax.value_and_grad(loss_fn, has_aux=True)(state.params, input_dict,
                                                              jax.tree_util.Partial(state.apply_fn, rngs=rngs))
     new_state = state.apply_gradients(grads=grad)
@@ -56,6 +57,13 @@ def update_iter_sgd(state, input_dict, rngs, loss_fn):
 
 
 def _set_up_tx(var_params: ReconVarParameters):
+    """Set up optimizer and learning rate schedule from ReconVarParameters.
+
+    Args:
+        var_params (ReconVarParameters): optimization parameters for a set of variables.
+    Returns:
+        optax.GradientTransformation: optimizer.
+    """
     if var_params.lr <= 0:
         return optax.set_to_zero()
 
@@ -111,6 +119,20 @@ def reconstruct_sgd(forward_fn: Callable,
                     post_update_handler: Callable = None,
                     rngs: Union[Dict, None] = None,
                     output_info: bool = False):
+    """"Reconstruct variables using a single optimization setting with SGD.
+
+    Args:
+        forward_fn (callable): forward model of the system.
+        variables (dict): initial values of the reconstruction variables.
+        data_loader (generator): generator that yields input dictionary (see calcil.data_utils.loader_from_numpy).
+        loss (Loss): loss function (see calcil.loss).
+        var_params (ReconVarParameters): optimization parameters (see calcil.reconstruction.ReconVarParameters).
+        recon_param (ReconIterParameters): reconstruction settings (see calcil.reconstruction.ReconIterParameters).
+        output_fn (callable): output function.
+        post_update_handler (callable): post update handler that is called after each epoch.
+        rngs (dict): random number generators.
+        output_info (bool): whether to output reconstruction info.
+        """
     optimizer = _set_up_tx(var_params)
     state = train_state.TrainState.create(apply_fn=forward_fn, params=variables, tx=optimizer)
 
@@ -121,6 +143,13 @@ def reconstruct_sgd(forward_fn: Callable,
 
 
 def generate_nested_dict_keys(d):
+    """Generate a list of keys for a nested dictionary. A key is formatted as 'levelkey1_levelkey2_..._0'.
+
+    Args:
+        d (dict): nested dictionary.
+    Returns:
+        list: list of keys.
+    """
     if not isinstance(d, dict):
         return ['0']
     out = []
@@ -141,6 +170,25 @@ def reconstruct_multivars_sgd(forward_fn: Callable,
                               post_update_handler: Callable = None,
                               rngs: Union[Dict, None] = None,
                               output_info: bool = False):
+    """Reconstruct multiple variables with different optimization settings using SGD.
+
+    Args:
+        forward_fn (callable): forward model of the system
+        variables (dict): initial values of the reconstruction variables
+        var_params_pytree (dict): nested dictionary of optimization parameters for each variable. all variables need to
+            be included in the dictionary. Set the learning rate to 0 to freeze the variable.
+        data_loader (generator): generator that yields input dictionary (see calcil.data_utils.loader_from_numpy)
+        loss (Loss): loss function (see calcil.loss)
+        recon_param (ReconIterParameters): reconstruction settings (see calcil.reconstruction.ReconIterParameters)
+        output_fn (callable): output function
+        post_update_handler (callable): post update handler that is called after each epoch
+        rngs (dict): jax random number generators
+        output_info (bool): whether to output reconstruction info
+    Returns:
+        dict: final reconstructed values
+        dict: dictionary of reconstructed images at different iterations
+        dict: dictionary of reconstruction info at different iterations if output_info is True
+    """
 
     param_labels = generate_nested_dict_keys(var_params_pytree)
 
@@ -167,6 +215,21 @@ def run_reconstruction(state: train_state.TrainState,
                        output_fn: Union[Callable, None],
                        post_update_handler: Callable,
                        rngs: Union[Dict, None]):
+    """Run SGD reconstruction with flax.train.TrainState.
+
+    Args:
+        state (flax.train.TrainState): initial state of the reconstruction
+        data_loader (generator): generator that yields input dictionary
+        loss (Loss): loss function
+        recon_param (ReconIterParameters): reconstruction settings
+        output_fn (callable): output function
+        post_update_handler (callable): post update handler
+        rngs (dict): random number generators
+    Returns:
+        dict: final reconstructed values
+        dict: dictionary of reconstructed images at different iterations
+        dict: dictionary of reconstruction info at different iterations
+    """
     # init logging
     summary_writer = tensorboard.SummaryWriter(os.path.join(recon_param.save_dir,
                                                             datetime.datetime.now().strftime("%Y%m%d-%H%M%S")))
@@ -239,6 +302,16 @@ def run_reconstruction(state: train_state.TrainState,
 
 
 def load_checkpoint_and_output(load_path, output_fn=None):
+    """Load a checkpoint and optionally output the variables or reconstructions.
+
+    Args:
+        load_path (str): path to the checkpoint.
+        output_fn (callable): output function.
+    Returns:
+        dict: variables in the checkpoint.
+        dict: output_dict if output_fn is given.
+    """
+
     variables = checkpoints.restore_checkpoint(load_path, None)['params']
     variables = jax.tree_util.tree_map(lambda x: jax.numpy.asarray(x), variables)
 
@@ -250,6 +323,17 @@ def load_checkpoint_and_output(load_path, output_fn=None):
 
 
 def load_tensorboard_log(log_path, tag, is_image=False):
+    """Load tensorboard log from a file.
+
+    Args:
+        log_path (str): path to the log file.
+        tag (str): tag of the tensorboard variable.
+        is_image (bool): whether the tensorboard variable is an image.
+    Returns:
+        list: list of tensorboard variable values.
+        list: list of iteration numbers corresponding to the tensorboard variable values.
+    """
+
     if os.path.isdir(log_path):
         list_path = glob.glob(log_path + '/events.out.tfevents.*')
         if len(list_path) == 1:
