@@ -49,7 +49,18 @@ class ReconVarParameters:
 
 
 def update_iter_sgd(state, input_dict, rngs, loss_fn):
-    """Update function for SGD reconstruction."""
+    """Update function for SGD reconstruction.
+
+    Args:
+        state (flax.train.TrainState): current state of the reconstruction.
+        input_dict (dict): input dictionary.
+        rngs (dict): dict of random number generators.
+        loss_fn (callable): loss function.
+
+    Returns:
+        flax.train.TrainState: new state of the reconstruction.
+        dict: reconstruction info.
+    """
     (_, info), grad = jax.value_and_grad(loss_fn, has_aux=True)(state.params, input_dict,
                                                              jax.tree_util.Partial(state.apply_fn, rngs=rngs))
     new_state = state.apply_gradients(grads=grad)
@@ -119,7 +130,7 @@ def reconstruct_sgd(forward_fn: Callable,
                     post_update_handler: Callable = None,
                     rngs: Union[Dict, None] = None,
                     output_info: bool = False):
-    """"Reconstruct variables using a single optimization setting with SGD.
+    """Reconstruct variables using a single optimization setting with SGD.
 
     Args:
         forward_fn (callable): forward model of the system.
@@ -241,6 +252,7 @@ def run_reconstruction(state: train_state.TrainState,
 
     # set up timer
     loop_start_time = time.time()
+    recon_start_time = time.time()
     reset_timer = True
 
     # update model
@@ -297,6 +309,9 @@ def run_reconstruction(state: train_state.TrainState,
         if ((s+1) % recon_param.checkpoint_every == 0) or (s + 1 == recon_param.n_epoch):
             checkpoints.save_checkpoint(recon_param.save_dir, state, s+1,
                                         keep=recon_param.keep_checkpoints, overwrite=True)
+
+    print('Total elapsed time in sec: {:#.5g}'.format(time.time() - recon_start_time), end='')
+    print(', average epoch per sec: {:#.5g}'.format(recon_param.n_epoch / (time.time() - recon_start_time)))
 
     return state.params, list_recon, list_info
 
