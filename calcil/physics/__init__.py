@@ -4,5 +4,4 @@
 # Contact: rcao@berkeley.edu
 # Website: https://rmcao.github.io
 
-from . import ray_optics
 from . import wave_optics
