@@ -1,0 +1,37 @@
+[build-system]
+requires = ["setuptools>=64", "setuptools_scm>=8"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "calcil"
+version = "0.1"
+dynamic = ["dependencies"]
+#dynamic = ["version"]
+authors = [
+  { name="Ruiming Cao", email="rcao@berkeley.edu" }
+]
+description = "Berkeley Computational Imaging Library"
+readme = "README.md"
+requires-python = ">=3.9"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: BSD-3-Clause",
+    "Operating System :: POSIX :: Linux",
+]
+[tool.setuptools.dynamic]
+dependencies = {file = ["requirements.txt"]}
+
+[project.optional-dependencies]
+dev = [
+]
+
+[project.urls]
+"Homepage" = "https://github.com/rmcao/CalCIL"
+
+[tool.setuptools]
+include-package-data = true
+zip-safe = false
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["calcil*"]

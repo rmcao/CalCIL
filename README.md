@@ -19,33 +19,24 @@
 
 - Less commonly used than pytorch, so less community support
 - Pretty barebone, often need other libraries from [jax ecosystem](https://deepmind.google/discover/blog/using-jax-to-accelerate-our-research/)
+- The development of jax mainly relies on Google which may not be a good thing for some people
 
 ## Installation
-The core functionalities depend on Numpy, [Jax](https://github.com/google/jax), [Flax](https://github.com/google/flax), and [Optax](https://github.com/deepmind/optax). The logging in the reconstruction process requires Tensorflow V2.
+```
+# Create a virtual environment
+conda create -n calcil python=3.9
+conda activate calcil
 
-Clone the repo
+# (optional, if needed) Install CUDA in conda virtual env
+conda install -c conda-forge cudatoolkit~=11.8.0 cudnn~=8.8.0
+conda install -c "nvidia/label/cuda-11.8.0" cuda-nvcc
 
-    $ git clone --recursive https://github.com/rmcao/CalCIL.git
+# Install jaxlib for GPU
+pip install jaxlib==0.3.18+cuda11.cudnn82 -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html
 
-Create a virtual environment and install the dependencies
-
-    $ conda create -n calcil python=3.10
-    $ conda activate calcil
-
-(Optional) Install CUDA in conda virtual env
-
-    $ conda install -c conda-forge cudatoolkit~=11.8.0 cudnn~=8.8.0
-    $ conda install -c "nvidia/label/cuda-11.8.0" cuda-nvcc
-
-Install jax
-
-    $ pip install https://storage.googleapis.com/jax-releases/cuda11/jaxlib-0.3.18+cuda11.cudnn82-cp39-cp39-manylinux2014_x86_64.whl
-
-Install CalCIL:
-
-    $ cd calcil
-    $ pip3 install -e .
-
+# Install this library
+pip install git+https://github.com/rmcao/CalCIL.git
+```
 
 ## History
 This project serves as my personal "software infrastructure" during grad school. When I first started working on computational 
