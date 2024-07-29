@@ -1,9 +1,5 @@
-# Description:
-#  
-# Written by Ruiming Cao on March 25, 2022
-# Contact: rcao@berkeley.edu
-# Website: https://rmcao.github.io
-
+# -*- coding: utf-8 -*-
+"""Phantom generation utilities."""
 
 from dataclasses import dataclass
 from typing import Tuple, Union, List

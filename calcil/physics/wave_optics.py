@@ -1,32 +1,28 @@
-# Description:
-#  
-# Written by Ruiming Cao on February 02, 2022
-# Contact: rcao@berkeley.edu
-# Website: https://rmcao.github.io
+# -*- coding: utf-8 -*-
+"""Implementation of common functions for wave optics in jax."""
 
 import jax.numpy as jnp
 import math
 
 import numpy as np
 
-from .. import forward
-
 jnp_complex_datatype = jnp.complex64
 
 
-def genGrid(size, dx, flag_shift=False):
-    """
-    This function generates 1D Fourier grid, and is centered at the middle of the array
-    Inputs:
-        size    - length of the array
-        dx      - pixel size
-    Optional parameters:
-        flag_shift - flag indicating whether the final array is circularly shifted
-                     should be false when computing real space coordinates
-                     should be true when computing Fourier coordinates
-    Outputs:
-        kx      - 1D Fourier grid
+def genGrid(size: int,
+            dx: float,
+            flag_shift: bool = False):
+    """This function generates 1D Fourier grid, and is centered at the middle of the array
 
+    Args:
+        size(int): length of the array
+        dx(float): pixel size
+        flag_shift(bool): flag indicating whether the final array is circularly shifted, meaning that the zero is at
+            the center of the array when False (default), and at the beginning of the array when True. It should be
+            False when computing real space coordinates, and True when computing Fourier coordinates.
+
+    Returns:
+        jnp.ndarray: 1D grid
     """
     xlin = (jnp.arange(size, dtype=jnp_complex_datatype) - size // 2) * dx
     if flag_shift:

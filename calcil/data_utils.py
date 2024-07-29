@@ -1,9 +1,6 @@
-# Description: Data loaders
-#  
-# Written by Ruiming Cao on October 15, 2021
-# Contact: rcao@berkeley.edu
-# Website: https://rmcao.github.io
-
+# -*- coding: utf-8 -*-
+"""Implementation of data utilities for loading data from numpy arrays and tf datasets.
+"""
 import warnings
 import numpy as np
 import jax.tree_util

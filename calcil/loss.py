@@ -1,8 +1,5 @@
-# Description: Implementation of common loss functions
-#
-# Written by Ruiming Cao on October 08, 2021
-# Contact: rcao@berkeley.edu
-# Website: https://rmcao.github.io
+# -*- coding: utf-8 -*-
+"""Implementation of Loss class for running gradient-based reconstruction."""
 
 import jax.numpy as jnp
 import jax
@@ -16,13 +13,14 @@ def loss_fn_checker(fn):
 
 class Loss:
     """Loss class that wraps a loss function and its name. It is used to define the loss function of a model. The
+
     loss function is a callable that takes the following arguments:
         forward_output: output of the forward function of the model
         variables: trainable variables of the model
         input_dict: input dictionary from the data loader
         intermediate: intermediate variables of the model (optional)
-        and returns a tuple of (loss, aux_dict). The aux_dict is a dictionary of auxiliary terms that are used for logging
-        and debugging. The loss is a scalar value.
+        and returns a tuple of (loss, aux_dict). The aux_dict is a dictionary of auxiliary terms that are used for
+        logging and debugging. The loss is a scalar value.
     Simple arithmetic operations are defined for the Loss class. For example, if loss_fn1 and loss_fn2 are two Loss
     objects, then loss_fn1 + loss_fn2 is also a Loss object. The loss function of the new Loss object is the sum of the
     loss functions of loss_fn1 and loss_fn2. The weights of the two loss functions are also added together. The same

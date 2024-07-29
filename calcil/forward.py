@@ -1,8 +1,5 @@
-# Description:
-#  
-# Written by Ruiming Cao on January 04, 2022
-# Contact: rcao@berkeley.edu
-# Website: https://rmcao.github.io
+# -*- coding: utf-8 -*-
+"""Implementation of forward model class for image reconstruction."""
 
 import functools
 

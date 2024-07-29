@@ -1,8 +1,5 @@
-# Description:
-#  
-# Written by Ruiming Cao on March 25, 2022
-# Contact: rcao@berkeley.edu
-# Website: https://rmcao.github.io
+# -*- coding: utf-8 -*-
+"""Signal processing utilities."""
 
 from numbers import Number
 import operator
