@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "calcil"
-version = "0.1"
+version = "0.0.3"
 dynamic = ["dependencies"]
 #dynamic = ["version"]
 authors = [
@@ -22,8 +22,7 @@ classifiers = [
 dependencies = {file = ["requirements.txt"]}
 
 [project.optional-dependencies]
-dev = [
-]
+dev = ["sphinx", "sphinx-rtd-theme"]
 
 [project.urls]
 "Homepage" = "https://github.com/rmcao/CalCIL"
