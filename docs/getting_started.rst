@@ -131,6 +131,7 @@ Then, `calcil` uses a `Loss` class to wrap around the loss function.
 We define a simple L2 loss between the measurement `y` and the output of the forward model `y_hat` for the deconvolution problem.
 
 .. code-block:: python
+
     # In this case, we use a pre-defined l2 loss function getter, which only requires the input dictionary key to retrieve the measurement from the input dictionary.
     # You may look into the source code of `get_l2_loss` to see how it is implemented.
     l2_loss = cc.loss.get_l2_loss('y')

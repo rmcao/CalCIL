@@ -3,7 +3,7 @@
 History of this project
 =======================
 
-This project serves as my (`Ruiming <https://rmcao.net>`__'s) personal "software infrastructure" during grad school. When I first started working on computational
+This project serves as `my <https://rmcao.net>`__' personal "software infrastructure" during grad school. When I first started working on computational
 imaging in 2019, there are many different optimization algorithms used for imaging reconstruction, such as FISTA, ADMM, Gauss-Newton, conjugate gradient, etc.
 **However, coming from a computer vision background, I really only know one thing: gradient descent.**
 

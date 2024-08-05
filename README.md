@@ -1,5 +1,12 @@
 # CalCIL - gradient descent helper for computational image reconstruction via jax
 
+
+<p align="center">
+    <a style="text-decoration:none !important;" href="https://zenodo.org/doi/10.5281/zenodo.12786082" alt="DOI"><img src="https://zenodo.org/badge/779045683.svg" /></a>
+    <a style="text-decoration:none !important;" href="https://calcil.readthedocs.io/en/latest/index.html" alt="documentation"> <img src="https://img.shields.io/badge/API-docs-34B167" /></a>
+</p>
+
+
 ## Features
 - 🧠 brainless gradient descent-based image reconstruction 
 - 🤓 fully customizable loss functions 
@@ -22,6 +29,8 @@
 - The development of jax mainly relies on Google which may not be a good thing for some people
 
 ## Installation
+
+Detailed installation instructions can be found [here](https://calcil.readthedocs.io/en/latest/installation.html).
 ```
 # Create a virtual environment
 conda create -n calcil python=3.9
@@ -36,4 +45,37 @@ pip install jaxlib==0.3.18+cuda11.cudnn82 -f https://storage.googleapis.com/jax-
 
 # Install this library
 pip install git+https://github.com/rmcao/CalCIL.git
+```
+
+## Tutorials
+A step-by-step tutorial on how to use CalCIL for image reconstruction can be found [here](https://calcil.readthedocs.io/en/latest/getting_started.html). 
+Also, check out the example notebook for [image deconvolution](examples/notebook-deconvolution.ipynb). 
+
+## Usage
+
+The following work is powered by CalCIL:
+- [Dynamic speckle structured illumination microscopy](https://arxiv.org/pdf/2206.01397) 
+- [Neural space-time model](https://www.biorxiv.org/content/10.1101/2024.01.16.575950), [code repo](https://github.com/rmcao/nstm)
+- [Space-Time DiffuserCam Video Reconstruction](https://opg.optica.org/abstract.cfm?uri=3d-2022-JW5B.1)
+
+## Citation
+If you find this library useful, please consider citing the following papers:
+```
+@inproceedings{cao2022dynamic,
+  title={Dynamic structured illumination microscopy with a neural space-time model},
+  author={Cao, Ruiming and Liu, Fanglin Linda and Yeh, Li-Hao and Waller, Laura},
+  booktitle={2022 IEEE International Conference on Computational Photography (ICCP)},
+  pages={1--12},
+  year={2022},
+  organization={IEEE}
+}
+
+@article{cao2024neural,
+  title={Neural space-time model for dynamic scene recovery in multi-shot computational imaging systems},
+  author={Cao, Ruiming and Divekar, Nikita and Nu{\~n}ez, James and Upadhyayula, Srigokul and Waller, Laura},
+  journal={bioRxiv 2024.01.16.575950},
+  pages={2024--01},
+  year={2024},
+  publisher={Cold Spring Harbor Laboratory}
+}
 ```
