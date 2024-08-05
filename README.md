@@ -50,7 +50,7 @@ pip install git+https://github.com/rmcao/CalCIL.git
 
 ## Tutorials
 A step-by-step tutorial on how to use CalCIL for image reconstruction can be found [here](https://calcil.readthedocs.io/en/latest/getting_started.html). 
-Also, check out the example notebook for [image deconvolution](examples/notebook-deconvolution.ipynb). 
+Also, check out the example notebook for [image deconvolution](examples/demo-deconvolution.ipynb). 
 
 ## Usage
 
