@@ -4,6 +4,7 @@
 <p align="center">
     <a style="text-decoration:none !important;" href="https://zenodo.org/doi/10.5281/zenodo.12786082" alt="DOI"><img src="https://zenodo.org/badge/779045683.svg" /></a>
     <a style="text-decoration:none !important;" href="https://calcil.readthedocs.io/en/latest/index.html" alt="documentation"> <img src="https://img.shields.io/badge/API-docs-34B167" /></a>
+    <a style="text-decoration:none !important;" href="https://opensource.org/licenses/BSD-3-Clause" alt="License"><img src="https://img.shields.io/badge/License-BSD%203--Clause-blue.svg" /></a>
 </p>
 
 
