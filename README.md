@@ -34,19 +34,17 @@
 Detailed installation instructions can be found [here](https://calcil.readthedocs.io/en/latest/installation.html).
 ```
 # Create a virtual environment
-conda create -n calcil python=3.9
+conda create -n calcil python=3.10
 conda activate calcil
 
-# (optional, if needed) Install CUDA in conda virtual env
-conda install -c conda-forge cudatoolkit~=11.8.0 cudnn~=8.8.0
-conda install -c "nvidia/label/cuda-11.8.0" cuda-nvcc
-
-# Install jaxlib for GPU
-pip install jaxlib==0.3.18+cuda11.cudnn82 -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html
-
-# Install this library
+# Install this library (defaults to JAX CPU version)
 pip install git+https://github.com/rmcao/CalCIL.git
 ```
+**GPU Support:** To enable GPU support, you must install the CUDA-enabled version of JAX. For example:
+```bash
+pip install -U "jax[cuda12]"
+```
+Please refer to the official [JAX installation guide](https://jax.readthedocs.io/en/latest/installation.html) for more details on installing JAX with CUDA or TPU support.
 
 ## Tutorials
 A step-by-step tutorial on how to use CalCIL for image reconstruction can be found [here](https://calcil.readthedocs.io/en/latest/getting_started.html). 

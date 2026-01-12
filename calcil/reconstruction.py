@@ -313,8 +313,8 @@ def run_reconstruction(state: train_state.TrainState,
 
         batch_info = []
         for i_batch, input_dict in enumerate(input_batches):
-            cur_rngs = jax.tree_map(lambda rng: jax.random.split(rng)[0], rngs)
-            rngs = jax.tree_map(lambda rng: jax.random.split(rng)[1], rngs)
+            cur_rngs = jax.tree.map(lambda rng: jax.random.split(rng)[0], rngs)
+            rngs = jax.tree.map(lambda rng: jax.random.split(rng)[1], rngs)
 
             state, info = update_fn(state, input_dict, cur_rngs)
 
@@ -356,7 +356,7 @@ def run_reconstruction(state: train_state.TrainState,
 
         # save checkpoints
         if ((s+1) % recon_param.checkpoint_every == 0) or (s + 1 == recon_param.n_epoch):
-            checkpoints.save_checkpoint(recon_param.save_dir, state, s+1,
+            checkpoints.save_checkpoint(os.path.abspath(recon_param.save_dir), state, s+1,
                                         keep=recon_param.keep_checkpoints, overwrite=True)
 
     print('Total elapsed time in sec: {:#.5g}'.format(time.time() - recon_start_time), end='')
