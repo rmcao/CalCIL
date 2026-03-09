@@ -1,9 +1,8 @@
-chex==0.1.6
-flax==0.6.0
-jax==0.3.18
-optax==0.1.3
-protobuf~=3.20.0
-tensorflow==2.8.1
-scikit-image~=0.19.3
-scipy==1.10.1
-numpy<2.0.00
+chex==0.1.91
+flax==0.12.2
+jax==0.8.2
+numpy==2.4.1
+optax==0.2.6
+scikit-image==0.26.0
+scipy==1.17.0
+tensorflow==2.20.0

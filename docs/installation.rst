@@ -16,22 +16,28 @@ Step-by-step Installation
 
    .. code-block:: bash
 
-      $ conda create -n calcil python=3.9
+      $ conda create -n calcil python=3.10
       $ conda activate calcil
 
-
-2. Install CUDA and cuDNN in conda virtual env (you may opt to skip this step if you have CUDA installed in your system and you know what you are doing)
-
-   .. code-block:: bash
-
-      $ conda install -c conda-forge cudatoolkit~=11.8.0 cudnn~=8.8.0
-      $ conda install -c "nvidia/label/cuda-11.8.0" cuda-nvcc
-
-3. Install jaxlib. Note that the following command is for CUDA 11.x and cuDNN 8.2+. If you have different versions of CUDA, please refer to `JAX installation guide <https://jax.readthedocs.io/en/latest/installation.html>`__ and make sure to match the version numbers of jaxlib and jax (as specified in requirements.txt).
+2. Install CalCIL. You may use -e flag to install in editable mode.
 
    .. code-block:: bash
 
-      $ pip install jaxlib==0.3.18+cuda11.cudnn82 -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html
+      $ pip install git+https://github.com/rmcao/CalCIL.git
+
+   .. note::
+
+      This will install the standard CPU-only version of JAX by default.
+
+3. (Optional) Enable GPU support.
+
+   To enable GPU support, you must install the CUDA-enabled version of JAX. For example:
+
+   .. code-block:: bash
+
+      $ pip install -U "jax[cuda12]"
+
+   Please refer to the official `JAX installation guide <https://jax.readthedocs.io/en/latest/installation.html>`__ for more details on installing JAX with CUDA or TPU support.
 
    .. note::
 
@@ -41,15 +47,8 @@ Step-by-step Installation
 
          $ python -c "import jax.numpy as jnp; print(jnp.ones(5)+jnp.zeros(5))"
 
-4. pip install CalCIL. You may use -e flag to install in editable mode.
-
-   .. code-block:: bash
-
-      $ pip install git+https://github.com/rmcao/CalCIL.git
-
-5. Install optional dependencies for interactive visualization via Jupyter lab
+4. Install optional dependencies for interactive visualization via Jupyter lab
 
    .. code-block:: bash
 
       $ conda install -c conda-forge jupyterlab nodejs ipympl
-
